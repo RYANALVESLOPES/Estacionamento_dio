@@ -1,38 +1,78 @@
-(function () {
-    const $ = (query) => document.querySelector(query);
-    function patio() {
-        function ler() {
-            return localStorage.patio ? JSON.parse(localStorage.patio) : [];
-        }
-        function salvar(veiculos) {
-            localStorage.setItem("patio", JSON.stringify(veiculos));
-        }
-        function adicionar(veiculo) {
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                <td>${veiculo.nome}</td>
-                <td>${veiculo.placa}</td>
-                <td>${veiculo.entrada.toLocaleString("pt-BR")}</td>
-                <td>
-                    <button class="delete" data-placa="${veiculo.placa}">X</button>
-                </td>
-            `;
-            $("#patio")?.appendChild(row);
-        }
-        function remover() { }
-        function render() { }
-        return { ler, adicionar, remover, salvar, render };
-    }
-    $("#cadastrar")?.addEventListener("click", () => {
-        const nome = $("#nome")?.value;
-        const placa = $("#placa")?.value;
-        if (!nome || !placa) {
-            alert("Os campos nome e placa são obrigatórios.");
+(function(){
+    const $ = q => document.querySelector(q);
+
+    function convertPeriod(mil) {
+        var min = Math.floor(mil / 60000);
+        var sec = Math.floor((mil % 60000) / 1000);
+        return `${min}m e ${sec}s`;
+    };
+
+    function renderGarage () {
+        const garage = getGarage();
+        $("#garage").innerHTML = "";
+        garage.forEach(c => addCarToGarage(c))
+    };
+
+    function addCarToGarage (car) {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${car.name}</td>
+            <td>${car.licence}</td>
+            <td data-time="${car.time}">
+                ${new Date(car.time)
+                        .toLocaleString('pt-BR', { 
+                            hour: 'numeric', minute: 'numeric' 
+                })}
+            </td>
+            <td>
+                <button class="delete">x</button>
+            </td>
+        `;
+
+        $("#garage").appendChild(row);
+    };
+
+    function checkOut(info) {
+        let period = new Date() - new Date(info[2].dataset.time);
+        period = convertPeriod(period);
+
+        const licence = info[1].textContent;
+        const msg = `O veículo ${info[0].textContent} de placa ${licence} permaneceu ${period} estacionado. \n\n Deseja encerrar?`;
+
+        if(!confirm(msg)) return;
+        
+        const garage = getGarage().filter(c => c.licence !== licence);
+        localStorage.garage = JSON.stringify(garage);
+        
+        renderGarage();
+    };
+
+    const getGarage = () => localStorage.garage ? JSON.parse(localStorage.garage) : [];
+
+    renderGarage();
+    $("#send").addEventListener("click", e => {
+        const name = $("#name").value;
+        const licence = $("#licence").value;
+
+        if(!name || !licence){
+            alert("Os campos são obrigatórios.");
             return;
-        }
-        patio().adicionar({ nome, placa, entrada: new Date() });
-        patio().render();
+        }   
+
+        const card = { name, licence, time: new Date() };
+
+        const garage = getGarage();
+        garage.push(card);
+
+        localStorage.garage = JSON.stringify(garage);
+
+        addCarToGarage(card);
+        $("#name").value = "";
+        $("#licence").value = "";
     });
-})();
-export {};
-//# sourceMappingURL=script.js.map
+
+    $("#garage").addEventListener("click", (e) => {
+        if(e.target.className === "delete")
+            checkOut(e.target.parentElement.parentElement.cells);
+    });
+})()
